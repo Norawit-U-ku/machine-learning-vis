@@ -1,0 +1,76 @@
+
+<!doctype html>
+<html>
+<head>
+    <title>Network | Interaction events</title>
+    <script type="text/javascript" src="https://code.jquery.com/jquery-3.2.1.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.16.2/axios.js"></script>
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+
+    <script type="text/javascript" src="http://visjs.org/dist/vis.js"></script>
+    <link href="http://visjs.org/dist/vis-network.min.css" rel="stylesheet" type="text/css"/>
+    <link href="http://visjs.org/dist/vis-timeline-graph2d.min.css" rel="stylesheet" type="text/css"/>
+    <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
+    <link href="style.css" rel="stylesheet" type="text/css"/>
+</head>
+<body>
+
+<div class="container">
+    <div>
+        <button onclick="addNode();" class="btn btn-primary">Add Data source</button>
+        <button onclick="undoNode();" class="btn btn-warning">Undo </button>
+        <button onclick="undoEdge();" class="btn btn-warning">Undo Edge</button>
+        <button onclick="save();" class="btn btn-primary">Save</button>
+        <button onclick="runn();" class="btn btn-success">Run network</button>
+    </div>
+    <div id="network"></div>
+    <div id="output-graph"></div>
+    <div id="network-popUp">
+        <span id="operation">node</span> <br>
+        <table style="margin:auto;">
+            <tr>
+                <td>label</td>
+                <td>
+                    <select style="width: 100%;" id="node-type">
+                        <option value="database">Database</option>
+                        <option value="stream">Stream</option>
+                        <option value="csv">CSV</option>
+                        <option value="text">Text</option>
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <td>label</td><td><input id="node-label" value="new value" /></td>
+            </tr></table>
+        <input type="button" value="save" id="saveButton" />
+        <input type="button" value="cancel" id="cancelButton" />
+    </div>
+    <!-- The Modal -->
+    <div id="myModal" class="modal">
+
+        <!-- Modal content -->
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <p>Some text in the Modal..</p>
+            <div id="node-network"></div>
+        </div>
+
+    </div>
+
+    <pre id="eventSpan"></pre>
+</div>
+
+
+
+<script type="text/javascript" src="network.js"></script>
+<script type="text/javascript" src="output.js"></script>
+
+</body>
+</html>
