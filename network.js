@@ -6,9 +6,10 @@ let DIR = "images/";
 let nodes = new vis.DataSet([]);
 // load data
 if(!localStorage.getItem('nodes'))
-    localStorage.setItem('nodes', '');
+    localStorage.setItem('nodes', NODES);
 if(!localStorage.getItem('edges'))
-    localStorage.setItem('edges', '');
+    localStorage.setItem('edges', EDGES)
+console.log(NODES);
 // create an array with edges
 let edges = new vis.DataSet([
 ]);
