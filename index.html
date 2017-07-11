@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gojs/1.7.15/go-debug.js"></script>
+<!--<script src="https://cdnjs.cloudflare.com/ajax/libs/gojs/1.7.15/go.js"></script>-->
+
+
+<div id="sample">
+    <div id="myDiagramDiv" style="border: solid 1px black; width:100%; height:500px"></div>
+    <div>
+        <div>
+            <button id="SaveButton" onclick="save()">Save</button>
+            <button onclick="load()">Load</button>
+            <button onclick="recursiveEdgeAnimation(myDiagram.findNodeForKey('neuron1'))">run</button>
+            <button onclick="toggleForwardBackward()">forward/backward</button>
+            Diagram Model saved in JSON format:
+        </div>
+        <textarea id="mySavedModel" style="width:100%;height:300px">{ "class": "go.GraphLinksModel",
+  "nodeDataArray": [
+{"key":"P1", "category":"Process", "pos":"150 120", "text":"Process"},
+{"key":"P2", "category":"Process", "pos":"330 320", "text":"Tank"},
+{"key":"V1", "category":"Valve", "pos":"270 120", "text":"V1"},
+{"key":"P3", "category":"Process", "pos":"150 420", "text":"Pump"},
+{"key":"V2", "category":"Valve", "pos":"150 280", "text":"VM", "angle":270},
+{"key":"V3", "category":"Valve", "pos":"270 420", "text":"V2", "angle":180},
+{"key":"P4", "category":"Process", "pos":"450 140", "text":"Reserve Tank"},
+{"key":"V4", "category":"Valve", "pos":"390 60", "text":"VA"},
+{"key":"V5", "category":"Valve", "pos":"450 260", "text":"VB", "angle":90},
+{"key":"neuron1", "category":"neuron", "pos":"300 80", "text":"1"},
+{"key":"neuron2", "category":"neuron", "pos":"350 60", "text":"2"},
+{"key":"neuron3", "category":"neuron", "pos":"350 100", "text":"3"}
+ ],
+  "linkDataArray": [
+            {"from":"P1", "to":"V1"},
+            {"from":"P3", "to":"V2"},
+            {"from":"V2", "to":"P1"},
+            {"from":"P2", "to":"V3"},
+            {"from":"V3", "to":"P3"},
+            {"from":"V1", "to":"V4"},
+            {"from":"V4", "to":"P4"},
+            {"from":"V1", "to":"P2"},
+            {"from":"P4", "to":"V5"},
+            {"from":"V5", "to":"P2"},
+            {"from":"neuron1", "to":"neuron2"},
+            {"from":"neuron1", "to":"neuron3"}
+ ]}
+    </textarea>
+    </div>
+</div>
+
+
+<script>
+    var $;
+    function init() {
+        if (window.goSamples) goSamples();  // init for these samples -- you don't need to call this
+        $ = go.GraphObject.make;  // for more concise visual tree definitions
+
+        myDiagram =
+            $(go.Diagram, "myDiagramDiv",
+                {
+                    "grid.visible": true,
+                    "grid.gridCellSize": new go.Size(30, 20),
+                    "draggingTool.isGridSnapEnabled": true,
+                    "resizingTool.isGridSnapEnabled": true,
+                    "rotatingTool.snapAngleMultiple": 90,
+                    "rotatingTool.snapAngleEpsilon": 45,
+                    "undoManager.isEnabled": true,
+                    // allow double-click in background to create a new node
+                    "clickCreatingTool.archetypeNodeData": { text: "Node", color: "white" },
+                    // allow Ctrl-G to call groupSelection()
+                    "commandHandler.archetypeGroupData": { text: "Group", isGroup: true, color: "blue" }
+                });
+
+        // when the document is modified, add a "*" to the title and enable the "Save" button
+        myDiagram.addDiagramListener("Modified", function(e) {
+            var button = document.getElementById("SaveButton");
+            if (button) button.disabled = !myDiagram.isModified;
+            var idx = document.title.indexOf("*");
+            if (myDiagram.isModified) {
+                if (idx < 0) document.title += "*";
+            } else {
+                if (idx >= 0) document.title = document.title.substr(0, idx);
+            }
+        });
+
+        myDiagram.nodeTemplateMap.add("Process",
+            $(go.Node, "Auto",
+                { locationSpot: new go.Spot(0.5, 0.5),locationObjectName: "SHAPE",
+                    resizable: true, resizeObjectName: "SHAPE" },
+                new go.Binding("location", "pos", go.Point.parse).makeTwoWay(go.Point.stringify),
+                $(go.Shape, "Cylinder1",
+                    { name: "SHAPE",
+                        strokeWidth: 2,
+                        fill: $(go.Brush, "Linear",
+                            { start: go.Spot.Left, end: go.Spot.Right,
+                                0: "gray", 0.5: "white", 1: "gray" }),
+                        minSize: new go.Size(50, 50),
+                        portId: "", fromSpot: go.Spot.AllSides, toSpot: go.Spot.AllSides,
+                        // allow all kinds of links from and to this port
+                        fromLinkable: true, fromLinkableSelfNode: true, fromLinkableDuplicates: true,
+                        toLinkable: true, toLinkableSelfNode: true, toLinkableDuplicates: true
+                    },
+                    new go.Binding("desiredSize", "size", go.Size.parse).makeTwoWay(go.Size.stringify)),
+                $(go.TextBlock,
+                    { alignment: go.Spot.Center, textAlign: "center", margin: 5,
+                        editable: true },
+                    new go.Binding("text").makeTwoWay())
+            ));
+        myDiagram.nodeTemplateMap.add("neuron",
+            $(go.Node, "Auto",
+                { locationSpot: new go.Spot(0.5, 0.5),locationObjectName: "SHAPE",
+                    resizable: true, resizeObjectName: "SHAPE" },
+                new go.Binding("location", "pos", go.Point.parse).makeTwoWay(go.Point.stringify),
+                $(go.Shape, "Circle",
+                    { name: "SHAPE",
+                        strokeWidth: 2,
+                        fill:"white",
+                        minSize: new go.Size(50, 50),
+                        portId: "", fromSpot: go.Spot.AllSides, toSpot: go.Spot.AllSides,
+                        // allow all kinds of links from and to this port
+                        fromLinkable: true, fromLinkableSelfNode: false, fromLinkableDuplicates: true,
+                        toLinkable: true, toLinkableSelfNode: false, toLinkableDuplicates: true,
+                        fromSpot: go.Spot.Right,  // coming out from middle-right
+                        toSpot: go.Spot.Left // going into at middle-left
+                    },
+                    new go.Binding("desiredSize", "size", go.Size.parse).makeTwoWay(go.Size.stringify)),
+                $(go.TextBlock,
+                    { alignment: go.Spot.Center, textAlign: "center", margin: 5,
+                        editable: true },
+                    new go.Binding("text").makeTwoWay())
+            ));
+        myDiagram.nodeTemplateMap.add("Valve",
+            $(go.Node, "Vertical",
+                { locationSpot: new go.Spot(0.5, 1, 0, -21), locationObjectName: "SHAPE",
+                    selectionObjectName: "SHAPE", rotatable: true,
+                    // allow all kinds of links from and to this port
+                    fromLinkable: true, fromLinkableSelfNode: true, fromLinkableDuplicates: true,
+                    toLinkable: true, toLinkableSelfNode: true, toLinkableDuplicates: true},
+                new go.Binding("angle").makeTwoWay(),
+                new go.Binding("location", "pos", go.Point.parse).makeTwoWay(go.Point.stringify),
+                $(go.TextBlock,
+                    { alignment: go.Spot.Center, textAlign: "center", margin: 5, editable: true },
+                    new go.Binding("text").makeTwoWay(),
+                    // keep the text upright, even when the whole node has been rotated upside down
+                    new go.Binding("angle", "angle", function(a) { return a === 180 ? 180 : 0; }).ofObject()),
+                $(go.Shape,
+                    { name: "SHAPE",
+                        geometryString: "F1 M0 0 L40 20 40 0 0 20z M20 10 L20 30 M12 30 L28 30",
+                        strokeWidth: 2,
+                        fill: $(go.Brush, "Linear", { 0: "gray", 0.35: "white", 0.7: "gray" }),
+                        portId: "", fromSpot: new go.Spot(1, 0.35), toSpot: new go.Spot(0, 0.35) })
+            ));
+
+        myDiagram.linkTemplate =
+            $(go.Link,
+//                { routing: go.Link.AvoidsNodes, curve: go.Link.Bezier , corner: 10, reshapable: true, toShortLength: 7},
+                new go.Binding("points").makeTwoWay(),
+                // mark each Shape to get the link geometry with isPanelMain: true
+                $(go.Shape, {name:"border", isPanelMain: true, stroke: "black", strokeWidth: 5 }),
+                $(go.Shape, {name:"color1", isPanelMain: true, stroke: "gray", strokeWidth: 3 }),
+                $(go.Shape, {isPanelMain: true, stroke: "white", strokeWidth: 1, name: "PIPE", strokeDashArray: [10, 10] }),
+                $(go.Shape, { toArrow: "Triangle", fill: "black", stroke: null })
+
+            );
+        // Define the appearance and behavior for Groups:
+        function groupInfo(adornment) {  // takes the tooltip, not a group node data object
+            var g = adornment.adornedPart;  // get the Group that the tooltip adorns
+            var mems = g.memberParts.count;
+            var links = 0;
+            g.memberParts.each(function(part) {
+                if (part instanceof go.Link) links++;
+            });
+            return "Group " + g.data.key + ": " + g.data.text + "\n" + mems + " members including " + links + " links";
+        }
+//        // Groups consist of a title in the color given by the group node data
+//        // above a translucent gray rectangle surrounding the member parts
+//        myDiagram.groupTemplate =
+//            $(go.Group, "Vertical",
+//                { selectionObjectName: "PANEL",  // selection handle goes around shape, not label
+//                    ungroupable: true },  // enable Ctrl-Shift-G to ungroup a selected Group
+//                $(go.TextBlock,
+//                    {
+//                        font: "bold 19px sans-serif",
+//                        isMultiline: false,  // don't allow newlines in text
+//                        editable: true  // allow in-place editing by user
+//                    },
+//                    new go.Binding("text", "text").makeTwoWay(),
+//                    new go.Binding("stroke", "color")),
+//                $(go.Panel, "Auto",
+//                    { name: "PANEL" },
+//                    $(go.Shape, "Rectangle",  // the rectangular shape around the members
+//                        { fill: "rgba(128,128,128,0.2)", stroke: "gray", strokeWidth: 3 }),
+//                    $(go.Placeholder, { padding: 10 })  // represents where the members are
+//                )
+//            );
+
+        myDiagram.groupTemplate =
+            $(go.Group, "Auto",
+                { layout: $(go.LayeredDigraphLayout,
+                    { direction: 0, columnSpacing: 10 })},
+                $(go.Shape, "RoundedRectangle", // surrounds everything
+                    { parameter1: 10, fill: "rgba(128,128,128,0.33)",
+                        // allow all kinds of links from and to this port
+                        fromLinkable: true, fromLinkableSelfNode: false, fromLinkableDuplicates: false,
+                        toLinkable: true, toLinkableSelfNode: false, toLinkableDuplicates: false  }),
+                $(go.Panel, "Vertical",  // position header above the subgraph
+                    { defaultAlignment: go.Spot.Left },
+                    $(go.Panel, "Horizontal",  // the header
+                        { defaultAlignment: go.Spot.Top },
+                        $("SubGraphExpanderButton"),  // this Panel acts as a Button
+                        $(go.TextBlock,     // group title near top, next to button
+                            { font: "Bold 12pt Sans-Serif" },
+                            new go.Binding("text", "text"))
+                    ),
+                    $(go.Placeholder,     // represents area for all member parts
+                        { padding: new go.Margin(0, 10), background: "white" })
+                )
+            );
+
+        load();
+
+        loop();  // animate some flow through the pipes
+    }
+    var forward = true;
+    function loop() {
+        var diagram = myDiagram;
+        if(forward)
+            setTimeout(function() {
+                var oldskips = diagram.skipsUndoManager;
+                diagram.skipsUndoManager = true;
+                diagram.links.each(function(link) {
+                    if(link.fromNode.data&&link.fromNode.data.activate) {
+                        var shape = link.findObject("PIPE");
+                        var off = shape.strokeDashOffset - 2;
+                        shape.strokeDashOffset = (off <= 0) ? 20 : off;
+                    }
+                });
+                diagram.skipsUndoManager = oldskips;
+                loop();
+            }, 100);
+        else
+            setTimeout(function() {
+                var oldskips = diagram.skipsUndoManager;
+                diagram.skipsUndoManager = true;
+                diagram.links.each(function(link) {
+                    if(link.fromNode.data&&link.fromNode.data.activate) {
+                        var shape = link.findObject("PIPE");
+                        var off = shape.strokeDashOffset + 2;
+                        shape.strokeDashOffset = (off >= 20) ? 0 : off;
+                    }
+                });
+                diagram.skipsUndoManager = oldskips;
+                loop();
+            }, 100);
+    }
+
+    function save() {
+        document.getElementById("mySavedModel").value = myDiagram.model.toJson();
+        myDiagram.isModified = false;
+    }
+    function load() {
+        myDiagram.model = go.Model.fromJson(document.getElementById("mySavedModel").value);
+    }
+    function randomEdgeAnimation(){
+        myDiagram.links.each(function(link) {Math.floor((Math.random() * 10) + 1)<4?link.fromNode.data.activate=true:link.fromNode.data.activate=false;})
+    }
+    function recursiveEdgeAnimation(node,startNode){
+        if(node==startNode)return;
+        var DELAY_NODE_COMPUTE = 1000;
+        node.data.activate = true;
+        node.linksConnected.each(function(link){
+            if(forward){
+                if(link.fromNode.data.key == node.data.key){
+                    changeLinkColor(link,"green");
+//                    changeNodeColor(link.fromNode,"green");
+//                    setTimeout(function () {
+//                        changeNodeColor(link.toNode,"yellow");
+//                    },2);
+
+                    setTimeout(function () {
+                        recursiveEdgeAnimation(link.toNode,node);
+                        changeLinkColor(link,"grey");
+//                        changeNodeColor(link.toNode,"white");
+                        node.data.activate = false;
+
+                    },DELAY_NODE_COMPUTE);
+//                setTimeout(function () {
+//
+//                },DELAY_NODE_COMPUTE);
+                }}
+            else{
+                if(link.toNode.data.key == node.data.key){
+                    changeLinkColor(link,"orange");
+                    changeNodeColor(link.fromNode,"yellow");
+                    setTimeout(function () {
+                        recursiveEdgeAnimation(link.fromNode,node);
+                        changeLinkColor(link,"grey");
+                        node.data.activate = false;
+
+                    },DELAY_NODE_COMPUTE);
+
+//                setTimeout(function () {
+//
+//                },DELAY_NODE_COMPUTE);
+                }}
+
+        });
+    }
+    function changeLinkColor(link,color) {
+        myDiagram.model.startTransaction("change color");
+        if(link.findObject("color1"))
+            link.findObject("color1").fill = color;
+        console.log(link.findObject("color1"));
+        myDiagram.model.commitTransaction("change color");
+    }
+    function changeNodeColor(node,color) {
+        myDiagram.model.startTransaction("change color");
+        if(node.findObject("SHAPE"))
+            node.findObject("SHAPE").fill = color;
+        myDiagram.model.commitTransaction("change color");
+    }
+    function logLinkFromAllNode(){
+        myDiagram.nodes.each(function(node){
+            console.log(node.data.key+": ");
+            node.linksConnected.each(function(link){
+                console.log(link.fromNode.data.key+", "+link.toNode.data.key);
+            })});
+    }
+    function changeColor(node, color){
+        node.findObject("SHAPE").fill = $(go.Brush, "Linear",
+            { start: go.Spot.Left, end: go.Spot.Right,
+                0: "red", 0.5: "blue", 1: "green" });
+    }
+    function toggleForwardBackward(){
+        forward=!forward;
+    }
+    init();
+</script>
+</body>
+</html>
